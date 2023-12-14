@@ -7,15 +7,14 @@ import threading
 
 
 class Client:
-    def __init__(self):
-
+    def __init__(self, app_callback):
+        self.app_callback = app_callback
         self.host = '127.0.0.1'
         self.port = 8081
-        # Create a socket object
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # Connect to the server
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.host, self.port))
+
         threading.Thread(target=self.listen, daemon=True).start()
 
         print(f"Connected to {self.host}:{self.port}")
@@ -24,51 +23,43 @@ class Client:
     def listen(self):
         try:
             while True:
-                # Receive data from the server
                 response = self.client_socket.recv(1024)
                 if not response:
-                    # Connection closed by the server
+                    self.reconnect_server()
                     print("Server closed the connection.")
                     break
-
-                print(f"Received data: {response.decode('utf-8')}")
-
-                # You can add your logic to process the received message here
-
+                response_data = json.loads(response.decode('utf-8'))
+                self.app_callback(response_data)
         except ConnectionAbortedError:
             print("Connection Aborted Error.")
         except ConnectionResetError:
             print("Server disconnected unexpectedly.")
-    def send_hello(self):
-        message = "Hello from the client!"
-        self.client_socket.send(message.encode('utf-8'))
-
     def receive_message(self):
         # Receive the server's response
         response = self.client_socket.recv(1024)
         print(f"Server response: {response.decode('utf-8')}")
+        return response
 
-    # Close the socket
+    def reconnect_server(self):
+        self.client_socket.close()
+        while True:
+            try:
+                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.client_socket.connect((self.host, self.port))
+                print("Reconnected to the server.")
+                break
+            except Exception as e:
+                print(f"Reconnection failed: {e}")
+                time.sleep(1)
+
     def close_socket(self):
         self.client_socket.close()
 
 
 class Application(tk.Frame):
 
-    def quit(self):
-        self.destroy()
-        sys.exit()
-
-    def clear_frame(self):
-        for widget in self.winfo_children():
-            widget.destroy()
-
-    def main_menu(self):
-        self.create_startup_screen()
-
     def __init__(self, master):
         super().__init__(master)
-        self.client_instance = Client()
         self.master = master
         self.master.title("Chat App")
         # Calculate the screen width and height
@@ -88,6 +79,48 @@ class Application(tk.Frame):
         self.confirm_password_entry = None
         self.create_startup_screen()
         self.pack(expand=True, fill="both")
+        self.client_instance = Client(self.handle_server_response)
+
+    def quit(self):
+        self.destroy()
+        sys.exit()
+
+    def clear_frame(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+    def main_menu(self):
+        self.client_instance.client_socket.close()
+        self.create_startup_screen()
+
+    def handle_server_response(self, response_data):
+        """
+        Handle the server response. Update the GUI based on the response data.
+
+        Parameters:
+        response_data (dict): A dictionary containing the server's response.
+        """
+        if response_data.get("status") == "success":
+            self.main_app()
+        elif response_data.get("type") == "signup":
+            self.main_app()
+        elif response_data.get("type") == "message":
+            print("Message received")
+        # Add more elif blocks for other types of responses
+        else:
+            print("Unknown response type:", response_data)
+
+    def receive_and_handle_message(self):
+        while True:
+            try:
+                response = self.client_instance.client_socket.recv(1024)
+                if not response:
+                    break  # Connection closed by the server
+                response_data = json.loads(response.decode('utf-8'))
+                self.handle_server_response(response_data)
+            except Exception as e:
+                print(f"Error handling server response: {e}")
+                break  # Stop the loop on errors
 
     def sign_up(self):
         username = self.username_entry.get()
@@ -106,13 +139,9 @@ class Application(tk.Frame):
                 "username": username,
                 "password": password
             }
-            time.sleep(0.1)
             request_json = json.dumps(self.request_data).encode('utf-8')
             print(f"Sending JSON request: {request_json}")
             self.client_instance.client_socket.send(request_json)
-            self.main_app()
-
-        print("Sign up called")
 
     def sign_in(self):
         username = self.username_entry.get()
@@ -131,7 +160,6 @@ class Application(tk.Frame):
             request_json = json.dumps(self.request_data).encode('utf-8')
             print(f"Sending JSON request: {request_json}")
             self.client_instance.client_socket.send(request_json)
-            self.main_app()
 
     def create_signin_screen(self):
 

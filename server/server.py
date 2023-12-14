@@ -1,8 +1,20 @@
 import json
 import socket
 import threading
+import hashlib
+import secrets
 
-USER_DATA_FILE = "user_data.json"
+user_data_lock = threading.Lock()
+USER_DATA_FILE_PATH = "user_data.json"
+# Load user data from the JSON file
+with user_data_lock:
+    try:
+        with open(USER_DATA_FILE_PATH, 'r') as file:
+            USER_DATA_FILE = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, initialize an empty dictionary
+        USER_DATA_FILE = {}
+    user_tokens = {}
 def handle_client(client_socket):
     try:
         while True:
@@ -19,16 +31,46 @@ def handle_client(client_socket):
             if data.get("request_type") == "signup":
                 username = data.get("username")
                 password = data.get("password")
-
-                # Perform basic validation (you may want to enhance this)
                 if username and password:
-                    # Store user data in the JSON file
-                    store_user_data(username, password)
-                    response = "Signup successful!"
+                    # Check if the username already exists
+                    if username in USER_DATA_FILE:
+                        response = {"status": "error", "message": "Username already exists."}
+                    else:
+                        # Hash the password
+                        hashed_password = hash_password(password)
+                        # Save the hashed password in the user data file
+                        USER_DATA_FILE[username] = hashed_password
+                        # Save the updated user data to the JSON file
+                        with open(USER_DATA_FILE_PATH, 'w') as file:
+                            json.dump(USER_DATA_FILE, file)
+                        # Generate a token
+                        token = generate_token()
+                        # Store the token on the server (you might want to use a database for this)
+                        # For simplicity, I'll store it in a dictionary
+                        user_tokens[username] = token
+                        response = {"status": "success", "token": token}
                 else:
-                    response = "Invalid signup request. Username and password are required."
-                # Send a response back to the client
-                client_socket.send(response.encode('utf-8'))
+                    response = {"status": "error", "message": "Username and password are required."}
+
+                # Send the response to the client
+                client_socket.send(json.dumps(response).encode('utf-8'))
+            elif data.get("request_type") == "signin":
+                username = data.get("username")
+                password = data.get("password")
+                if username and password:
+                    hashed_password = hash_password(password)
+                    if username in USER_DATA_FILE and USER_DATA_FILE[username] == hashed_password:
+                        # Generate a token
+                        token = generate_token()
+                        # Store the token on the server (you might want to use a database for this)
+                        # For simplicity, I'll store it in a dictionary
+                        user_tokens[username] = token
+                        response = {"status": "success", "token": token}
+                    else:
+                        response = {"status": "error", "message": "Invalid username or password."}
+                else:
+                    response = {"status": "error", "message": "Username and password are required."}
+            client_socket.send(json.dumps(response).encode('utf-8'))
     except ConnectionResetError:
         print("Client disconnected unexpectedly.")
     finally:
@@ -47,6 +89,14 @@ def store_user_data(username, password):
     # Save the updated user data to the JSON file
     with open(USER_DATA_FILE, 'w') as file:
         json.dump(user_data, file)
+
+# Function to generate a random token
+def generate_token():
+    return secrets.token_hex(16)
+
+# Function to hash the password
+def hash_password(password):
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 def start_server():
     # Set the server host and port
     host = '127.0.0.1'
