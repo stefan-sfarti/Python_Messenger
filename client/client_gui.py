@@ -4,6 +4,7 @@ import time
 import tkinter as tk
 import socket
 import threading
+from tkinter import ttk
 
 
 class Client:
@@ -11,6 +12,7 @@ class Client:
         self.app_callback = app_callback
         self.host = '127.0.0.1'
         self.port = 8081
+        self.token = None
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.host, self.port))
@@ -62,6 +64,22 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.master.title("Chat App")
+        self.style = ttk.Style()
+        self.style.theme_use("clam")  # Use a modern theme
+
+        self.bg_color = "#F0F0F0"  # Light gray
+        self.text_color = "#333333"  # Dark gray
+        self.button_color = "#4CAF50"  # Soft green
+        self.entry_bg_color = "#FFFFFF"  # White
+        self.entry_fg_color = "#333333"  # Dark gray
+
+        self.style.configure("TButton", background=self.button_color, foreground=self.text_color,
+                             font=("Helvetica", 12))
+        self.style.configure("TLabel", background=self.bg_color, foreground=self.text_color, font=("Helvetica", 12))
+        self.style.configure("TEntry", background=self.entry_bg_color, foreground=self.entry_fg_color,
+                             font=("Helvetica", 12))
+        self.master.configure(bg=self.bg_color)
+
         # Calculate the screen width and height
         screen_width = self.master.winfo_screenwidth()
         screen_height = self.master.winfo_screenheight()
@@ -90,7 +108,6 @@ class Application(tk.Frame):
             widget.destroy()
 
     def main_menu(self):
-        self.client_instance.client_socket.close()
         self.create_startup_screen()
 
     def handle_server_response(self, response_data):
@@ -101,6 +118,10 @@ class Application(tk.Frame):
         response_data (dict): A dictionary containing the server's response.
         """
         if response_data.get("status") == "success":
+            # Store the token if it's in the response
+            if "token" in response_data:
+                self.client_instance.token = response_data["token"]
+                print(f"Token received: {self.client_instance.token}")
             self.main_app()
         elif response_data.get("type") == "signup":
             self.main_app()
@@ -162,140 +183,123 @@ class Application(tk.Frame):
             self.client_instance.client_socket.send(request_json)
 
     def create_signin_screen(self):
-
         self.clear_frame()
-        # Create a new frame for the sign-in screen
-        sign_in_frame = tk.Frame(self)
-        sign_in_frame.pack(expand=True)
+        sign_in_frame = ttk.Frame(self)
+        sign_in_frame.pack(expand=True, fill="both")
 
-        # Create and configure widgets for the sign-in screen
-        username_label = tk.Label(sign_in_frame, text="Username:")
+        username_label = ttk.Label(sign_in_frame, text="Username:")
         username_label.pack(padx=10, pady=5)
 
-        self.username_entry = tk.Entry(sign_in_frame, width=30)
+        self.username_entry = ttk.Entry(sign_in_frame, width=30)
         self.username_entry.pack(padx=10, pady=5)
 
-        password_label = tk.Label(sign_in_frame, text="Password:")
+        password_label = ttk.Label(sign_in_frame, text="Password:")
         password_label.pack(padx=10, pady=5)
 
-        self.password_entry = tk.Entry(sign_in_frame, show="*", width=30)
+        self.password_entry = ttk.Entry(sign_in_frame, show="*", width=30)
         self.password_entry.pack(padx=10, pady=5)
 
-        sign_in_button = tk.Button(sign_in_frame, text="Sign In", command=self.sign_in, **self.button_style)
+        sign_in_button = ttk.Button(sign_in_frame, text="Sign In", command=self.sign_in)
         sign_in_button.pack(anchor="center", pady=(10, 0))
 
-        back_button = tk.Button(sign_in_frame, text="Back", command=self.main_menu, **self.button_style)
+        back_button = ttk.Button(sign_in_frame, text="Back", command=self.main_menu)
         back_button.pack(anchor="center", pady=(10, 0))
 
-        quit_button = tk.Button(sign_in_frame, text="Quit", command=self.quit, **self.button_style)
+        quit_button = ttk.Button(sign_in_frame, text="Quit", command=self.quit)
         quit_button.pack(anchor="center", pady=(10, 0))
 
     def create_signup_screen(self):
         self.clear_frame()
+        sign_up_frame = ttk.Frame(self)
+        sign_up_frame.pack(expand=True, fill="both")
 
-        # Create a new frame for the sign-up screen
-        sign_up_frame = tk.Frame(self)
-        sign_up_frame.pack(expand=True)
-
-        # Create and configure widgets for the sign-up screen
-        username_label = tk.Label(sign_up_frame, text="Username:")
+        username_label = ttk.Label(sign_up_frame, text="Username:")
         username_label.pack(padx=10, pady=5)
 
-        self.username_entry = tk.Entry(sign_up_frame, width=30)
+        self.username_entry = ttk.Entry(sign_up_frame, width=30)
         self.username_entry.pack(padx=10, pady=5)
 
-        password_label = tk.Label(sign_up_frame, text="Password:")
+        password_label = ttk.Label(sign_up_frame, text="Password:")
         password_label.pack(padx=10, pady=5)
 
-        self.password_entry = tk.Entry(sign_up_frame, show="*", width=30)
+        self.password_entry = ttk.Entry(sign_up_frame, show="*", width=30)
         self.password_entry.pack(padx=10, pady=5)
 
-        confirm_password_label = tk.Label(sign_up_frame, text="Confirm password:")
+        confirm_password_label = ttk.Label(sign_up_frame, text="Confirm password:")
         confirm_password_label.pack(padx=10, pady=5)
 
-        self.confirm_password_entry = tk.Entry(sign_up_frame, show="*", width=30)
+        self.confirm_password_entry = ttk.Entry(sign_up_frame, show="*", width=30)
         self.confirm_password_entry.pack(padx=10, pady=5)
 
-        sign_up_button = tk.Button(sign_up_frame, text="Sign Up", command=self.sign_up, **self.button_style)
+        sign_up_button = ttk.Button(sign_up_frame, text="Sign Up", command=self.sign_up)
         sign_up_button.pack(anchor="center", pady=(10, 0))
 
-        back_button = tk.Button(sign_up_frame, text="Back", command=self.main_menu, **self.button_style)
+        back_button = ttk.Button(sign_up_frame, text="Back", command=self.main_menu)
         back_button.pack(anchor="center", pady=(10, 0))
 
-        quit_button = tk.Button(sign_up_frame, text="Quit", command=self.quit, **self.button_style)
+        quit_button = ttk.Button(sign_up_frame, text="Quit", command=self.quit)
         quit_button.pack(anchor="center", pady=(10, 0))
 
     def create_startup_screen(self):
         self.clear_frame()
-        startup_frame = tk.Frame(self, background="#b6b9de")
+        startup_frame = ttk.Frame(self)
         startup_frame.pack(expand=True, fill="both")
-        # Create and configure widgets
-        welcome_label = tk.Label(startup_frame, text="Welcome to Messenger App", font=("Helvetica", 16, "bold"))
+
+        welcome_label = ttk.Label(startup_frame, text="Welcome to Messenger App", font=("Helvetica", 16, "bold"))
         welcome_label.pack(pady=20)
 
-        sign_in_button = tk.Button(startup_frame, text="Sign In", command=self.create_signin_screen,
-                                   **self.button_style)
-        sign_up_button = tk.Button(startup_frame, text="Sign Up", command=self.create_signup_screen,
-                                   **self.button_style)
-        quit_button = tk.Button(startup_frame, text="Quit", command=self.quit,
-                                **self.button_style)
+        sign_in_button = ttk.Button(startup_frame, text="Sign In", command=self.create_signin_screen)
+        sign_up_button = ttk.Button(startup_frame, text="Sign Up", command=self.create_signup_screen)
+        quit_button = ttk.Button(startup_frame, text="Quit", command=self.quit)
 
         sign_in_button.pack(anchor='center', pady=(10, 0))
         sign_up_button.pack(anchor='center', pady=(10, 0))
         quit_button.pack(anchor="center", pady=(10, 0))
 
+    def print_token(self):
+        print(self.client_instance.token)
+
     def main_app(self):
         self.clear_frame()
-
-        # Create a new frame for the main app screen
-        main_app_frame = tk.Frame(self, background="#363c7d")
+        main_app_frame = ttk.Frame(self)
         main_app_frame.pack(expand=True, fill="both")
         main_app_frame.grid_rowconfigure(0, weight=1)
         main_app_frame.grid_columnconfigure(0, weight=1)
-        main_app_frame.grid_columnconfigure(1, weight=1)
+        main_app_frame.grid_columnconfigure(1, weight=3)
 
-        message = tk.Frame(main_app_frame, relief="sunken", background="#b6b9de")
-        message.grid(row=0, column=1, sticky="nsew")
-        # Example content inside the message frame
-        label = tk.Label(message, text="Message Frame Content", font=("Helvetica", 12), pady=10)
-        label.pack()
-        label1 = tk.Label(message, text="Message Frame Content", font=("Helvetica", 12), pady=10)
-        label1.pack()
-        label2 = tk.Label(message, text="Message Frame Content", font=("Helvetica", 12), pady=10)
-        label2.pack()
-        label3 = tk.Label(message, text="Message Frame Content", font=("Helvetica", 12), pady=10)
-        label3.pack()
-        # Create and configure widgets for the main app screen
-        message_bar = tk.Frame(main_app_frame, relief="sunken")
-        message_bar.grid(row=1, column=1, sticky="nsew")
-        message_box = tk.Text(message_bar, height=1)
-        message_box.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
-        send_button = tk.Button(message_bar, text="Send")
-        send_button.grid(row=1, column=2)
+        # Sidebar
+        sidebar = ttk.Frame(main_app_frame, relief="sunken")
+        sidebar.grid(row=0, column=0, sticky="ns")
+        for i in range(5):  # Adjust the range for the number of rows you need
+            sidebar.grid_rowconfigure(i, weight=1)
 
-        # Example of a button in the sidebar
-        sidebar = tk.Frame(main_app_frame, bd=1, relief="sunken")  # Add border and relief
-        sidebar.grid(row=0, column=0, padx=10, pady=10, sticky="nsw")
-        signout_button = tk.Button(main_app_frame, text="Sign Out", command=self.main_menu, **self.button_style)
-        signout_button.grid(row=1, column=0, padx=10, pady=10)
+        # Adding buttons to the sidebar
+        sidebar_buttons = ["Sidebar Button 1", "Sidebar Button 2", "Sidebar Button 3", "Sidebar Button 4"]
+        for i, button_text in enumerate(sidebar_buttons):
+            button = ttk.Button(sidebar, text=button_text, command=None)  # Replace None with actual commands
+            button.grid(row=i, column=0, padx=10, pady=10, sticky="ew")
 
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None,
-                                   **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None, **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None,
-                                   **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None,
-                                   **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None,
-                                   **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
-        sidebar_button = tk.Button(sidebar, text="Sidebar Button", command=None,
-                                   **self.button_style)
-        sidebar_button.pack(pady=(10, 0))
+        # Sign Out button at the bottom of the sidebar
+        signout_button = ttk.Button(sidebar, text="Sign Out", command=self.main_menu)
+        signout_button.grid(row=5, column=0, padx=10, pady=10, sticky="ew")
+
+        # Message area
+        message_area = ttk.Frame(main_app_frame, relief="sunken")
+        message_area.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        message_area.grid_rowconfigure(0, weight=1)
+        message_area.grid_columnconfigure(0, weight=1)
+
+        # Example content inside the message area
+        label = ttk.Label(message_area, text="Message Frame Content", font=("Helvetica", 12))
+        label.grid(row=0, column=0, sticky="nw", padx=10, pady=10)
+
+        # Message input bar
+        message_bar = ttk.Frame(main_app_frame)
+        message_bar.grid(row=1, column=1, sticky="ew")
+        message_box = tk.Text(message_bar, height=2)  # Text widget remains tk
+        message_box.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        send_button = ttk.Button(message_bar, text="Send")
+        send_button.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
 
 if __name__ == "__main__":
